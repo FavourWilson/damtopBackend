@@ -1,0 +1,11 @@
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - '8089:8089'
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
