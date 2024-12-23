@@ -7,6 +7,8 @@ export interface IUser extends Document {
    email: string;
    NIN: string;
    password: string;
+   isEmailVerified: boolean;
+   verificationToken: string | null;
 }
 const UserSchema: Schema = new Schema(
     {
@@ -55,6 +57,15 @@ const UserSchema: Schema = new Schema(
                 message: "Password cannot be undefined",
             },
         },
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+          },
+          verificationToken: {
+            type: String,
+            default: null,
+          },
+          
     },
     {
         timestamps: true,

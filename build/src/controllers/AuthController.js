@@ -17,6 +17,8 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../database");
 const EmailService_1 = require("../services/EmailService");
 const utils_1 = require("../utils");
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const jwtSecret = process.env.JWT_TOKEN;
 const COOKIE_EXPIRATION_DAYS = 90; // cookie expiration in days
 const expirationDate = new Date(Date.now() + COOKIE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
@@ -75,7 +77,7 @@ const createSendToken = (user, res) => __awaiter(void 0, void 0, void 0, functio
     const token = jsonwebtoken_1.default.sign({ email, id }, jwtSecret, {
         expiresIn: "1d",
     });
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "development") {
         cookieOptions.secure = true;
     }
     res.cookie("jwt", token, cookieOptions);

@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
+import jwt from "jsonwebtoken";
+import dotenv from 'dotenv'
 
+dotenv.config();
 class ApiError extends Error {
     public statusCode: number;
     public isOperational: boolean;
@@ -36,8 +39,12 @@ export function generateToken(): string {
   return uuidv4();
 }
 
-export function verifyTokens(token: string): boolean {
-  return !!token;
-}
+export const verifyTokens = (token: string) => {
+    try {
+        return jwt.verify(token, process.env.JWT_TOKEN); 
+    } catch (error) {
+        return null;
+    }
+};
 
 export { ApiError, encryptPassword, isPasswordMatch };

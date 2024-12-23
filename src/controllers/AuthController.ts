@@ -4,7 +4,10 @@ import jwt from "jsonwebtoken";
 import { IUser, User } from "../database";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../services/EmailService";
 import { ApiError, encryptPassword, isPasswordMatch, verifyTokens } from "../utils";
+import dotenv from 'dotenv'
+import { v4 as uuidv4 } from "uuid";
 
+dotenv.config();
 const jwtSecret = process.env.JWT_TOKEN as string;
 const COOKIE_EXPIRATION_DAYS = 90; // cookie expiration in days
 const expirationDate = new Date(
@@ -28,7 +31,7 @@ const register = async (req: Request, res: Response) => {
       if (userExists) {
           throw new ApiError(400, "User already exists!");
       }
-
+      const token = uuidv4();
       const encryptedPassword = await encryptPassword(password);
 
       const user = await User.create({
@@ -38,6 +41,8 @@ const register = async (req: Request, res: Response) => {
           lastName,
           password: encryptedPassword,
           phone,
+          isEmailVerified: false,
+          verificationToken: token,
       });
 
       const userData = {
@@ -47,8 +52,11 @@ const register = async (req: Request, res: Response) => {
           lastName: user.lastName, 
           password: user.password,
           phone: user.phone,
-         
+          isEmailVerified: false,
       };
+
+      
+
 
       // if(!email||!lastName) {
       //     throw new ApiError(400, "Email and last name are required to send verification email!");
@@ -76,28 +84,41 @@ const createSendToken = async (user: IUser, res: Response) => {
     const token = jwt.sign({ email, id }, jwtSecret, {
         expiresIn: "1d",
     });
-    if (process.env.NODE_ENV === "production") { cookieOptions.secure = true; }
+    if (process.env.NODE_ENV === "development") { cookieOptions.secure = true; }
     res.cookie("jwt", token, cookieOptions);
 
     return token;
 };
 
 const verifyToken = async (req: Request, res: Response) => {
-    try {
-      const { token } = req.params;
-      if (!token) {
-        return res.status(400).json({ message: "Invalid token" });
-      }
+  try {
+    const { token } = req.params;
 
-      const isValid = verifyTokens(token);
-      if (!isValid) {
-        return res.status(400).json({ message: "Invalid or expired token" });
-      }
-
-      res.status(200).json({ message: "Email successfully verified!" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal Server Error", error });
+    if (!token) {
+      return res.status(400).json({ message: "Invalid token" });
     }
+
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) {
+      return res.status(404).json({ message: "Invalid or expired token" });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: "Email is already verified!" });
+    }
+
+    // Update user's email verification status
+    user.isEmailVerified = true;
+    user.verificationToken = undefined; // Clear the token
+    await user.save();
+
+    return res.status(200).json({ message: "Email successfully verified!" });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
   };
 
 const login = async (req: Request, res: Response) => {
@@ -109,6 +130,9 @@ const login = async (req: Request, res: Response) => {
             !(await isPasswordMatch(password, user.password as string))
         ) {
             throw new ApiError(400, "Incorrect email or password");
+        }
+        if (!user.isEmailVerified) {
+          throw new Error("Email is not verified");
         }
 
         const token = await createSendToken(user!, res);

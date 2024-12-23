@@ -11,10 +11,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendVerificationEmail(email: string, name: string) {
+export async function sendVerificationEmail(email: string, name: string, token: string) {
   try {
-    const token = generateToken();
-
     const verificationUrl = `${process.env.FRONTEND_URL}/verify/${token}`;
 
     const mailOptions = {
@@ -35,6 +33,7 @@ export async function sendVerificationEmail(email: string, name: string) {
     throw error;
   }
 }
+
 
 export async function sendPasswordResetEmail(email: string) {
   try {
